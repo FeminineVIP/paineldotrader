@@ -14,7 +14,9 @@ const API_URL = "https://api.paineldotrader.com.br";
 
 // Caminhos que nunca são bloqueados, mesmo sem sessão.
 const CAMINHOS_LIVRES = [
+  "/assinar",
   "/assinar.html",
+  "/login",
   "/login.html",
   "/favicon.ico",
   "/robots.txt"
@@ -46,7 +48,7 @@ export async function onRequest(context) {
 
   if (!sessionToken) {
     return Response.redirect(
-      new URL("/assinar.html", url.origin).toString(),
+      new URL("/assinar", url.origin).toString(),
       302
     );
   }
@@ -71,7 +73,7 @@ export async function onRequest(context) {
 
   if (!autenticado) {
     return Response.redirect(
-      new URL("/assinar.html", url.origin).toString(),
+      new URL("/assinar", url.origin).toString(),
       302
     );
   }
