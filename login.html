@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar — Painel do Trader</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --bg-raised: #141c26;
+    --line: #223041;
+    --text: #e8edf2;
+    --text-dim: #8fa1b3;
+    --accent: #4da3ff;
+    --accent-dim: #2c6fb3;
+    --green: #3ecf8e;
+    --mono: 'SFMono-Regular', Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .wrap { width: 100%; max-width: 380px; }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+    justify-content: center;
+  }
+
+  .mark {
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  header span {
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    color: var(--text-dim);
+  }
+
+  .card {
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 28px 24px;
+  }
+
+  h1 {
+    font-size: 20px;
+    margin: 0 0 6px;
+    text-align: center;
+  }
+
+  .sub {
+    color: var(--text-dim);
+    font-size: 14px;
+    text-align: center;
+    margin: 0 0 24px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  input[type="email"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 13px 14px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  input[type="email"]:focus { border-color: var(--accent); }
+
+  button {
+    width: 100%;
+    margin-top: 14px;
+    background: var(--accent);
+    color: #061019;
+    border: none;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  button:hover:not(:disabled) { background: #6bb4ff; }
+  button:disabled { opacity: 0.5; cursor: default; }
+
+  .status {
+    font-size: 13.5px;
+    margin-top: 14px;
+    min-height: 18px;
+    text-align: center;
+  }
+
+  .status.error { color: #ff8a8a; }
+  .status.ok { color: var(--green); }
+
+  .footer-link {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .footer-link a { color: var(--accent); text-decoration: none; }
+  .footer-link a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+  <div class="wrap">
+
+    <header>
+      <div class="mark"></div>
+      <span>PAINEL DO TRADER</span>
+    </header>
+
+    <div class="card">
+      <h1>Entrar</h1>
+      <p class="sub">Digite o e-mail usado na assinatura. Enviaremos um link de acesso.</p>
+
+      <label for="email">Seu e-mail</label>
+      <input type="email" id="email" placeholder="voce@exemplo.com" autocomplete="email">
+      <button id="submit">Enviar link de acesso</button>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="footer-link">
+      Ainda não é assinante? <a href="/assinar">Assinar agora</a>
+    </div>
+
+  </div>
+
+<script>
+  const API_URL = "https://api.paineldotrader.com.br";
+
+  const emailInput = document.getElementById("email");
+  const submitBtn = document.getElementById("submit");
+  const statusEl = document.getElementById("status");
+
+  async function enviarLink() {
+    statusEl.textContent = "";
+    statusEl.className = "status";
+
+    const email = emailInput.value.trim();
+
+    if (!email || !email.includes("@")) {
+      statusEl.textContent = "Digite um e-mail válido.";
+      statusEl.className = "status error";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Enviando...";
+
+    try {
+      const resp = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        throw new Error(data.error || "Não foi possível enviar o link.");
+      }
+
+      statusEl.textContent = data.message || "Se o e-mail tiver assinatura ativa, o link chega em instantes.";
+      statusEl.className = "status ok";
+      submitBtn.textContent = "Link enviado";
+
+    } catch (err) {
+      statusEl.textContent = "Algo deu errado: " + err.message;
+      statusEl.className = "status error";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Enviar link de acesso";
+    }
+  }
+
+  submitBtn.addEventListener("click", enviarLink);
+  emailInput.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") enviarLink();
+  });
+</script>
+
+</body>
+</html>
