@@ -189,6 +189,22 @@
     cursor: default;
   }
 
+  .checkout button.secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    font-weight: 500;
+    font-size: 13.5px;
+    margin-top: 8px;
+    padding: 11px;
+  }
+
+  .checkout button.secondary:hover:not(:disabled) {
+    background: var(--bg);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
   .status {
     font-size: 13.5px;
     min-height: 18px;
@@ -248,22 +264,24 @@
       <label for="email">Seu e-mail</label>
       <input type="email" id="email" placeholder="voce@exemplo.com" autocomplete="email">
       <button id="submit" disabled>Selecione um plano</button>
+      <button id="submit-pix" class="secondary" disabled>Pagar com Pix (avulso, sem renovação automática)</button>
       <div class="status" id="status"></div>
     </div>
 
     <footer>
-      Pagamento processado com segurança pelo Mercado Pago.
+      Pagamento processado com segurança pelo Mercado Pago. Cartão e saldo Mercado Pago renovam automaticamente; Pix libera o acesso por um período fixo, sem renovar sozinho.
     </footer>
 
   </div>
 
 <script>
-  const API_URL = "https://paineldotrader-api.luiz-sso.workers.dev";
+  const API_URL = "https://api.paineldotrader.com.br";
 
   let planoSelecionado = null;
 
   const plans = document.querySelectorAll(".plan");
   const submitBtn = document.getElementById("submit");
+  const submitPixBtn = document.getElementById("submit-pix");
   const emailInput = document.getElementById("email");
   const statusEl = document.getElementById("status");
 
@@ -271,10 +289,12 @@
     if (!planoSelecionado) {
       submitBtn.textContent = "Selecione um plano";
       submitBtn.disabled = true;
+      submitPixBtn.disabled = true;
       return;
     }
     submitBtn.textContent = "Continuar para pagamento";
     submitBtn.disabled = false;
+    submitPixBtn.disabled = false;
   }
 
   plans.forEach(btn => {
@@ -286,7 +306,7 @@
     });
   });
 
-  submitBtn.addEventListener("click", async () => {
+  function validarAntesDeEnviar() {
     statusEl.textContent = "";
     statusEl.className = "status";
 
@@ -295,14 +315,21 @@
     if (!email || !email.includes("@")) {
       statusEl.textContent = "Digite um e-mail válido.";
       statusEl.className = "status error";
-      return;
+      return null;
     }
 
     if (!planoSelecionado) {
       statusEl.textContent = "Selecione um plano.";
       statusEl.className = "status error";
-      return;
+      return null;
     }
+
+    return email;
+  }
+
+  submitBtn.addEventListener("click", async () => {
+    const email = validarAntesDeEnviar();
+    if (!email) return;
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Gerando pagamento...";
@@ -330,6 +357,39 @@
       statusEl.className = "status error";
       submitBtn.disabled = false;
       submitBtn.textContent = "Continuar para pagamento";
+    }
+  });
+
+  submitPixBtn.addEventListener("click", async () => {
+    const email = validarAntesDeEnviar();
+    if (!email) return;
+
+    submitPixBtn.disabled = true;
+    submitPixBtn.textContent = "Gerando Pix...";
+
+    try {
+      const resp = await fetch(`${API_URL}/subscribe-pix`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, plano: planoSelecionado })
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok || !data.ticket_url) {
+        throw new Error(data.error?.message || "Não foi possível gerar o Pix.");
+      }
+
+      statusEl.textContent = "Redirecionando para o Pix...";
+      statusEl.className = "status ok";
+
+      window.location.href = data.ticket_url;
+
+    } catch (err) {
+      statusEl.textContent = "Algo deu errado: " + err.message;
+      statusEl.className = "status error";
+      submitPixBtn.disabled = false;
+      submitPixBtn.textContent = "Pagar com Pix (avulso, sem renovação automática)";
     }
   });
 </script>
