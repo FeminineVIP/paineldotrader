@@ -15,6 +15,9 @@
     --muted: #8fa1b3;
     --accent: #4da3ff;
     --green: #3ecf8e;
+    /* Altura padrão de cada janela de gráfico. Também pode ser arrastada
+       manualmente pelo canto inferior direito de cada card. */
+    --chart-height: 400px;
   }
   *{box-sizing:border-box;}
   body{
@@ -39,7 +42,11 @@
 
   .embed-card{
     background: var(--card); border:1px solid var(--border); border-radius:12px;
-    padding:8px; overflow:hidden; margin-bottom:28px;
+    padding:8px; margin-bottom:28px;
+    /* Altura pode ser arrastada manualmente (canto inferior direito). */
+    overflow-y:auto; overflow-x:hidden;
+    min-height:200px;
+    resize: vertical;
   }
 
   .widget-grid{
@@ -49,7 +56,8 @@
   }
   .widget-card{
     background: var(--card); border:1px solid var(--border); border-radius:12px;
-    padding:0; height:400px; display:flex; flex-direction:column; overflow:hidden;
+    padding:0; height:var(--chart-height); min-height:180px; display:flex; flex-direction:column; overflow:hidden;
+    resize: vertical;
   }
   .widget-card.dragging{ opacity:0.35; }
   .drag-handle{
@@ -427,6 +435,52 @@
     }
 
     loadOrder();
+  })();
+
+  // Redimensionamento manual (arrastar o canto inferior direito) — o
+  // tamanho escolhido fica salvo por gráfico, e separadamente para o
+  // painel de cotações.
+  (function () {
+    const CHART_HEIGHTS_KEY = 'painelDoTraderChartHeights';
+    const QUOTE_HEIGHT_KEY = 'painelDoTraderQuoteHeight';
+
+    const cards = Array.from(document.querySelectorAll('.widget-card'));
+    let savedChartHeights = {};
+    try { savedChartHeights = JSON.parse(localStorage.getItem(CHART_HEIGHTS_KEY) || '{}'); } catch (e) {}
+
+    cards.forEach(card => {
+      const sym = card.dataset.symbol;
+      if (sym && savedChartHeights[sym]) {
+        card.style.height = savedChartHeights[sym] + 'px';
+      }
+    });
+
+    const quoteCard = document.querySelector('.embed-card');
+    try {
+      const savedQuoteHeight = localStorage.getItem(QUOTE_HEIGHT_KEY);
+      if (quoteCard && savedQuoteHeight) quoteCard.style.height = savedQuoteHeight + 'px';
+    } catch (e) {}
+
+    if (window.ResizeObserver) {
+      const roCharts = new ResizeObserver(entries => {
+        entries.forEach(entry => {
+          const sym = entry.target.dataset.symbol;
+          if (!sym) return;
+          savedChartHeights[sym] = Math.round(entry.contentRect.height);
+          try { localStorage.setItem(CHART_HEIGHTS_KEY, JSON.stringify(savedChartHeights)); } catch (e) {}
+        });
+      });
+      cards.forEach(card => roCharts.observe(card));
+
+      if (quoteCard) {
+        const roQuote = new ResizeObserver(entries => {
+          entries.forEach(entry => {
+            try { localStorage.setItem(QUOTE_HEIGHT_KEY, Math.round(entry.contentRect.height)); } catch (e) {}
+          });
+        });
+        roQuote.observe(quoteCard);
+      }
+    }
   })();
 </script>
 
