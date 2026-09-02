@@ -32,6 +32,11 @@
     align-items: center;
     justify-content: center;
     padding: 24px;
+    background-image: url('/assets/bg-login.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
 
   .wrap { width: 100%; max-width: 380px; }
@@ -60,7 +65,9 @@
   }
 
   .card {
-    background: var(--bg-raised);
+    background: rgba(20, 28, 38, 0.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 28px 24px;
