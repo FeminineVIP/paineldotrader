@@ -213,6 +213,67 @@
   .status.error { color: #ff8a8a; }
   .status.ok { color: var(--text-dim); }
 
+  .pix-panel {
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+  }
+
+  .pix-qr {
+    background: #fff;
+    border-radius: 10px;
+    padding: 12px;
+    line-height: 0;
+  }
+
+  .pix-qr img {
+    width: 220px;
+    height: 220px;
+    display: block;
+  }
+
+  .pix-panel textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    resize: none;
+  }
+
+  .pix-wait {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+    font-size: 13.5px;
+  }
+
+  .pix-wait.unlocked { color: var(--green); }
+
+  .spinner {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
   footer {
     margin-top: 40px;
     font-size: 13px;
@@ -260,12 +321,33 @@
       </button>
     </div>
 
-    <div class="checkout">
+    <div class="checkout" id="checkout-box">
       <label for="email">Seu e-mail</label>
       <input type="email" id="email" placeholder="voce@exemplo.com" autocomplete="email">
       <button id="submit" disabled>Selecione um plano</button>
       <button id="submit-pix" class="secondary" disabled>Pagar com Pix (avulso, sem renovação automática)</button>
       <div class="status" id="status"></div>
+    </div>
+
+    <div class="pix-panel" id="pix-panel" style="display:none;">
+      <div class="pix-qr">
+        <img id="pix-qr-img" alt="QR Code Pix">
+      </div>
+
+      <p class="sub" style="margin:0;max-width:none;">
+        Escaneie o QR code com o app do seu banco, ou copie o código abaixo e cole na área "Pix Copia e Cola".
+      </p>
+
+      <textarea id="pix-copia-cola" rows="3" readonly></textarea>
+
+      <button id="pix-copy-btn" class="secondary" style="margin-top:0;">Copiar código</button>
+
+      <div class="pix-wait" id="pix-wait">
+        <span class="spinner"></span>
+        <span id="pix-wait-text">Aguardando confirmação do pagamento…</span>
+      </div>
+
+      <button id="pix-voltar-btn" class="secondary" style="margin-top:0;">Escolher outro plano</button>
     </div>
 
     <footer>
@@ -360,6 +442,71 @@
     }
   });
 
+  const checkoutBox = document.getElementById("checkout-box");
+  const pixPanel = document.getElementById("pix-panel");
+  const pixQrImg = document.getElementById("pix-qr-img");
+  const pixCopiaCola = document.getElementById("pix-copia-cola");
+  const pixCopyBtn = document.getElementById("pix-copy-btn");
+  const pixVoltarBtn = document.getElementById("pix-voltar-btn");
+  const pixWait = document.getElementById("pix-wait");
+  const pixWaitText = document.getElementById("pix-wait-text");
+
+  let pixPollTimer = null;
+
+  function pararPollingPix() {
+    if (pixPollTimer) {
+      clearInterval(pixPollTimer);
+      pixPollTimer = null;
+    }
+  }
+
+  function voltarParaPlanos() {
+    pararPollingPix();
+    pixPanel.style.display = "none";
+    checkoutBox.style.display = "flex";
+    submitPixBtn.disabled = false;
+    submitPixBtn.textContent = "Pagar com Pix (avulso, sem renovação automática)";
+  }
+
+  pixVoltarBtn.addEventListener("click", voltarParaPlanos);
+
+  pixCopyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(pixCopiaCola.value);
+      pixCopyBtn.textContent = "Copiado!";
+      setTimeout(() => { pixCopyBtn.textContent = "Copiar código"; }, 2000);
+    } catch (err) {
+      // Alguns navegadores bloqueiam clipboard fora de HTTPS/contexto seguro.
+      // Como já deixamos o texto selecionável no textarea, o usuário
+      // ainda consegue copiar manualmente (Ctrl+C) mesmo se isso falhar.
+      pixCopiaCola.select();
+    }
+  });
+
+  function iniciarPollingPix(paymentId) {
+    pararPollingPix();
+
+    pixPollTimer = setInterval(async () => {
+      try {
+        const resp = await fetch(`${API_URL}/pix-status?payment_id=${encodeURIComponent(paymentId)}`);
+        const data = await resp.json();
+
+        if (data.unlocked) {
+          pararPollingPix();
+          pixWait.classList.add("unlocked");
+          pixWaitText.textContent = "Pagamento confirmado! Redirecionando para o login...";
+
+          setTimeout(() => {
+            window.location.href = "/login.html";
+          }, 2000);
+        }
+      } catch (err) {
+        // Falha de rede pontual não interrompe o polling — só tenta de novo
+        // no próximo ciclo.
+      }
+    }, 4000);
+  }
+
   submitPixBtn.addEventListener("click", async () => {
     const email = validarAntesDeEnviar();
     if (!email) return;
@@ -376,14 +523,19 @@
 
       const data = await resp.json();
 
-      if (!resp.ok || !data.ok || !data.ticket_url) {
+      if (!resp.ok || !data.ok || !data.qr_code) {
         throw new Error(data.error?.message || "Não foi possível gerar o Pix.");
       }
 
-      statusEl.textContent = "Redirecionando para o Pix...";
-      statusEl.className = "status ok";
+      pixQrImg.src = `data:image/png;base64,${data.qr_code_base64}`;
+      pixCopiaCola.value = data.qr_code;
+      pixWait.classList.remove("unlocked");
+      pixWaitText.textContent = "Aguardando confirmação do pagamento…";
 
-      window.location.href = data.ticket_url;
+      checkoutBox.style.display = "none";
+      pixPanel.style.display = "flex";
+
+      iniciarPollingPix(data.payment_id);
 
     } catch (err) {
       statusEl.textContent = "Algo deu errado: " + err.message;
