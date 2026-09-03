@@ -69,10 +69,29 @@
   .drag-handle:active{ cursor:grabbing; }
   .drag-handle .grip{ font-size:1rem; color:var(--muted); line-height:1; }
   .widget-card .mini-quote{ height:96px; flex-shrink:0; border-bottom:1px solid var(--border); overflow:hidden; }
-  .widget-card .tradingview-widget-container{flex:1; min-height:0;}
+  .widget-card .tradingview-widget-container{flex:1; min-height:0; position:relative;}
   .tradingview-widget-container{width:100%;}
   .tradingview-widget-copyright{font-size:0.7rem; color:var(--muted); text-align:right; padding-top:2px;}
   .tradingview-widget-copyright a{color:var(--muted);}
+
+  /* Ajuda visual pro bug ocasional do TradingView (gráfico fica preto e
+     pode levar até uns 2min pra desenhar sozinho, em qualquer dispositivo,
+     não é bug do site). Não dá pra detectar de fora quando o gráfico
+     realmente terminou (o widget roda num iframe de outro domínio), então
+     isso é só cosmético pro caso normal + um botão manual pro caso raro. */
+  .tv-chart-loading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(20,28,38,1); color:var(--muted); font-size:0.8rem; letter-spacing:0.02em;
+    z-index:2; pointer-events:none;
+  }
+  .tv-chart-reload{
+    position:absolute; top:8px; right:8px; z-index:3;
+    width:26px; height:26px; border-radius:999px; border:1px solid var(--border);
+    background:rgba(11,15,20,0.75); color:var(--text); font-size:14px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    opacity:0.55; transition:opacity 0.15s ease, transform 0.15s ease;
+  }
+  .tv-chart-reload:hover{ opacity:1; transform:rotate(20deg); }
 
   @media (max-width:1500px){ .widget-grid{ grid-template-columns: repeat(3, 1fr); } }
   @media (max-width:1100px){ .widget-grid{ grid-template-columns: repeat(2, 1fr); } }
@@ -481,6 +500,70 @@
         roQuote.observe(quoteCard);
       }
     }
+  })();
+</script>
+
+<script>
+  // Ajuda visual pro bug ocasional dos gráficos TradingView (candle não
+  // desenha e fica uma área preta — já discutido: causa é do lado do
+  // TradingView, acontece em qualquer dispositivo, não dá pra detectar
+  // de fora quando termina de carregar porque o widget é um iframe de
+  // outro domínio). Isso adiciona:
+  //  1. "Carregando gráfico…" nos primeiros 4s (cosmético, cobre a
+  //     piscada normal de carregamento).
+  //  2. Um botão "↻" discreto em cada gráfico pra recarregar só aquele
+  //     widget na hora, sem precisar dar F5 na página inteira — essa é
+  //     a correção de verdade pro caso raro de travar.
+  (function () {
+    function attachChartHelper(iframe) {
+      const container = iframe.closest('.tradingview-widget-container');
+      if (!container || container.dataset.tvFixAttached) return;
+      container.dataset.tvFixAttached = '1';
+
+      const loading = document.createElement('div');
+      loading.className = 'tv-chart-loading';
+      loading.textContent = 'Carregando gráfico…';
+      container.appendChild(loading);
+      setTimeout(() => { loading.style.display = 'none'; }, 4000);
+
+      const btn = document.createElement('button');
+      btn.className = 'tv-chart-reload';
+      btn.type = 'button';
+      btn.title = 'Atualizar gráfico';
+      btn.setAttribute('aria-label', 'Atualizar gráfico');
+      btn.textContent = '↻';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const src = iframe.src;
+        loading.style.display = 'flex';
+        iframe.src = 'about:blank';
+        setTimeout(() => {
+          iframe.src = src;
+          setTimeout(() => { loading.style.display = 'none'; }, 4000);
+        }, 50);
+      });
+      container.appendChild(btn);
+    }
+
+    // Pega os iframes que já existirem no momento em que este script roda...
+    document.querySelectorAll('iframe[src*="advanced-chart"]').forEach(attachChartHelper);
+
+    // ...e observa a chegada dos que o script assíncrono do TradingView
+    // ainda vai criar (o embed dele injeta o iframe depois de carregar).
+    const grid = document.getElementById('chartGrid') || document.body;
+    const mo = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        m.addedNodes.forEach((node) => {
+          if (node.nodeType !== 1) return;
+          if (node.tagName === 'IFRAME' && (node.src || '').indexOf('advanced-chart') !== -1) {
+            attachChartHelper(node);
+          } else if (node.querySelectorAll) {
+            node.querySelectorAll('iframe[src*="advanced-chart"]').forEach(attachChartHelper);
+          }
+        });
+      });
+    });
+    mo.observe(grid, { childList: true, subtree: true });
   })();
 </script>
 
