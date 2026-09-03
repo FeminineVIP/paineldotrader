@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel do Trader — Cotações Internacionais ao Vivo</title>
+<meta name="description" content="Painel de cotações internacionais em tempo real: câmbio, índices americanos, VIX, Bitcoin e metais, com gráficos de candle de 5 minutos reordenáveis.">
+<style>
+  :root{
+    --bg: #0b0f14;
+    --bg-alt: #101720;
+    --card: #141c26;
+    --border: #223041;
+    --text: #e8edf2;
+    --muted: #8fa1b3;
+    --accent: #4da3ff;
+    --green: #3ecf8e;
+    /* Altura padrão de cada janela de gráfico. Também pode ser arrastada
+       manualmente pelo canto inferior direito de cada card. */
+    --chart-height: 400px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height:1.6;
+  }
+  a{color:var(--accent);}
+
+  .wrap{max-width: 2000px; margin:0 auto; padding: 0 24px;}
+  header{padding: 24px 0 18px; border-bottom: 1px solid var(--border);}
+  h1{font-size: 1.4rem; margin:0 0 6px;}
+  .subtitle{color:var(--muted); font-size:0.9rem; margin:0;}
+
+  main{padding:24px 0 60px;}
+
+  .sidebar-header{display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; margin-bottom:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em;}
+  .sidebar-dot{width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0; box-shadow:0 0 0 3px rgba(62,207,142,0.2);}
+  .hint{font-size:0.78rem; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:normal; margin-left:6px;}
+
+  .embed-card{
+    background: var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:8px; margin-bottom:28px;
+    /* Altura pode ser arrastada manualmente (canto inferior direito). */
+    overflow-y:auto; overflow-x:hidden;
+    min-height:200px;
+    resize: vertical;
+  }
+
+  .widget-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:14px;
+  }
+  .widget-card{
+    background: var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:0; height:var(--chart-height); min-height:180px; display:flex; flex-direction:column; overflow:hidden;
+    resize: vertical;
+  }
+  .widget-card.dragging{ opacity:0.35; }
+  .drag-handle{
+    display:flex; align-items:center; gap:8px; padding:8px 12px;
+    background: var(--bg-alt); border-bottom:1px solid var(--border);
+    cursor:grab; font-size:0.78rem; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.03em; user-select:none; flex-shrink:0;
+  }
+  .drag-handle:active{ cursor:grabbing; }
+  .drag-handle .grip{ font-size:1rem; color:var(--muted); line-height:1; }
+  .widget-card .mini-quote{ height:96px; flex-shrink:0; border-bottom:1px solid var(--border); overflow:hidden; }
+  .widget-card .tradingview-widget-container{flex:1; min-height:0; position:relative;}
+  .tradingview-widget-container{width:100%;}
+  .tradingview-widget-copyright{font-size:0.7rem; color:var(--muted); text-align:right; padding-top:2px;}
+  .tradingview-widget-copyright a{color:var(--muted);}
+
+  /* Ajuda visual pro bug ocasional do TradingView (gráfico fica preto e
+     pode levar até uns 2min pra desenhar sozinho, em qualquer dispositivo,
+     não é bug do site). Não dá pra detectar de fora quando o gráfico
+     realmente terminou (o widget roda num iframe de outro domínio), então
+     isso é só cosmético pro caso normal + um botão manual pro caso raro. */
+  .tv-chart-loading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(20,28,38,1); color:var(--muted); font-size:0.8rem; letter-spacing:0.02em;
+    z-index:2; pointer-events:none;
+  }
+  .tv-chart-reload{
+    position:absolute; top:8px; right:8px; z-index:3;
+    width:26px; height:26px; border-radius:999px; border:1px solid var(--border);
+    background:rgba(11,15,20,0.75); color:var(--text); font-size:14px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    opacity:0.55; transition:opacity 0.15s ease, transform 0.15s ease;
+  }
+  .tv-chart-reload:hover{ opacity:1; transform:rotate(20deg); }
+
+  @media (max-width:1500px){ .widget-grid{ grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width:1100px){ .widget-grid{ grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width:650px){
+    .widget-grid{ grid-template-columns: 1fr; }
+    .widget-card{ height:320px; }
+  }
+
+  footer{padding:24px 0 40px; text-align:center; color:var(--muted); font-size:0.8rem; border-top:1px solid var(--border);}
+</style>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0f1115">
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32">
+<link rel="icon" href="/icons/favicon-16.png" sizes="16x16">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Painel Trader">
+<script src="/pwa-install.js" defer></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Painel do Trader</h1>
+    <p class="subtitle">Cotações internacionais em tempo real, direto no navegador.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="sidebar-header">
+    <span class="sidebar-dot"></span>
+    <span>Grade de cotações</span>
+  </div>
+  <div class="embed-card">
+    <div class="tradingview-widget-container">
+      <div class="tradingview-widget-container__widget"></div>
+      <div class="tradingview-widget-copyright"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+      {
+        "colorTheme": "dark",
+        "dateRange": "1D",
+        "showChart": false,
+        "locale": "br",
+        "isTransparent": true,
+        "width": "100%",
+        "height": "460",
+        "tabs": [
+          {
+            "title": "Cotações",
+            "symbols": [
+              { "s": "CAPITALCOM:DXY", "d": "DOLINDEX" },
+              { "s": "OANDA:EURUSD", "d": "EUR/USD" },
+              { "s": "FX_IDC:USDMXN", "d": "USD/MXN" },
+              { "s": "FX_IDC:USDZAR", "d": "USD/ZAR" },
+              { "s": "OANDA:USDCAD", "d": "USD/CAD" },
+              { "s": "FX_IDC:USDJPY", "d": "USD/JPY" },
+              { "s": "OANDA:GBPUSD", "d": "GBP/USD" },
+              { "s": "CAPITALCOM:US500", "d": "USA500" },
+              { "s": "CAPITALCOM:US30", "d": "US30" },
+              { "s": "CAPITALCOM:US100", "d": "US100" },
+              { "s": "CAPITALCOM:VIX", "d": "VIX" },
+              { "s": "TVC:UKOIL", "d": "BRENT" },
+              { "s": "TVC:GOLD", "d": "GOLD" },
+              { "s": "TVC:SILVER", "d": "SILVER" },
+              { "s": "BITSTAMP:BTCUSD", "d": "BTC/USD" },
+              { "s": "CAPITALCOM:FRA40", "d": "FRA40" },
+              { "s": "CAPITALCOM:ESP35", "d": "ESP35" },
+              { "s": "CAPITALCOM:EU50", "d": "EURO50" },
+              { "s": "CAPITALCOM:UK100", "d": "UK100" },
+              { "s": "FOREXCOM:JP225", "d": "JP225" },
+              { "s": "BMFBOVESPA:IBOV", "d": "BRA50" },
+              { "s": "FX_IDC:USDBRL", "d": "USD/BRL" }
+            ]
+          }
+        ]
+      }
+      </script>
+    </div>
+  </div>
+
+  <div class="sidebar-header">
+    <span class="sidebar-dot"></span>
+    <span>Gráficos — candle 5min</span>
+    <span class="hint">arraste pela faixa do topo de cada card pra reordenar — a ordem fica salva no seu navegador</span>
+  </div>
+
+  <div class="widget-grid" id="chartGrid">
+
+    <div class="widget-card" data-symbol="CAPITALCOM:DXY">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>Dolindex (DXY)</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "CAPITALCOM:DXY", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "CAPITALCOM:DXY", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="OANDA:EURUSD">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>EUR/USD</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "OANDA:EURUSD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "OANDA:EURUSD", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="FX_IDC:USDMXN">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>USD/MXN</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "FX_IDC:USDMXN", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "FX_IDC:USDMXN", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="FX_IDC:USDZAR">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>USD/ZAR</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "FX_IDC:USDZAR", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "FX_IDC:USDZAR", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="OANDA:USDCAD">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>USD/CAD</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "OANDA:USDCAD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "OANDA:USDCAD", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="CAPITALCOM:US500">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>USA500 (S&amp;P)</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "CAPITALCOM:US500", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "CAPITALCOM:US500", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="CAPITALCOM:US30">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>US30 (Dow Jones)</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "CAPITALCOM:US30", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "CAPITALCOM:US30", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="CAPITALCOM:VIX">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>VIX</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "CAPITALCOM:VIX", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "CAPITALCOM:VIX", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="BITSTAMP:BTCUSD">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>Bitcoin (BTC/USD)</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "BITSTAMP:BTCUSD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "BITSTAMP:BTCUSD", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="TVC:GOLD">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>Ouro (Gold)</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "TVC:GOLD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "TVC:GOLD", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="TVC:SILVER">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>Prata (Silver)</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "TVC:SILVER", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "TVC:SILVER", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+    <div class="widget-card" data-symbol="TVC:UKOIL">
+      <div class="drag-handle"><span class="grip">⠿⠿</span><span>Petróleo Brent</span></div>
+      <div class="mini-quote">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+          { "symbol": "TVC:UKOIL", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+          </script>
+        </div>
+      </div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        { "symbol": "TVC:UKOIL", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+        </script>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>Painel do Trader — cotações via TradingView (fontes CAPITALCOM / TVC / FX_IDC / OANDA / BITSTAMP), atualizadas em tempo real.</footer>
+
+<script>
+  // Reordenação por arrastar-e-soltar, com a ordem salva no navegador (localStorage).
+  // O arraste só inicia pela faixa do topo (.drag-handle) — arrastar o card inteiro
+  // não funciona porque os gráficos do TradingView (iframes) capturam o clique do mouse.
+  (function () {
+    const grid = document.getElementById('chartGrid');
+    const cards = Array.from(grid.querySelectorAll('.widget-card'));
+    let dragEl = null;
+
+    cards.forEach(card => {
+      const handle = card.querySelector('.drag-handle');
+
+      handle.addEventListener('mousedown', () => {
+        card.setAttribute('draggable', 'true');
+      });
+
+      card.addEventListener('dragstart', (e) => {
+        dragEl = card;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', card.dataset.symbol || ''); } catch (err) {}
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        card.removeAttribute('draggable');
+        dragEl = null;
+        saveOrder();
+      });
+
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (!dragEl || dragEl === card) return;
+        const rect = card.getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+        if (e.clientX < midX) {
+          grid.insertBefore(dragEl, card);
+        } else {
+          grid.insertBefore(dragEl, card.nextSibling);
+        }
+      });
+    });
+
+    function saveOrder() {
+      const order = Array.from(grid.children).map(c => c.dataset.symbol);
+      try { localStorage.setItem('painelDoTraderOrder', JSON.stringify(order)); } catch (e) {}
+    }
+
+    function loadOrder() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('painelDoTraderOrder') || 'null');
+        if (!saved || !Array.isArray(saved)) return;
+        const map = {};
+        Array.from(grid.children).forEach(c => { map[c.dataset.symbol] = c; });
+        saved.forEach(sym => { if (map[sym]) grid.appendChild(map[sym]); });
+      } catch (e) {}
+    }
+
+    loadOrder();
+  })();
+
+  // Redimensionamento manual (arrastar o canto inferior direito) — o
+  // tamanho escolhido fica salvo por gráfico, e separadamente para o
+  // painel de cotações.
+  (function () {
+    const CHART_HEIGHTS_KEY = 'painelDoTraderChartHeights';
+    const QUOTE_HEIGHT_KEY = 'painelDoTraderQuoteHeight';
+
+    const cards = Array.from(document.querySelectorAll('.widget-card'));
+    let savedChartHeights = {};
+    try { savedChartHeights = JSON.parse(localStorage.getItem(CHART_HEIGHTS_KEY) || '{}'); } catch (e) {}
+
+    cards.forEach(card => {
+      const sym = card.dataset.symbol;
+      if (sym && savedChartHeights[sym]) {
+        card.style.height = savedChartHeights[sym] + 'px';
+      }
+    });
+
+    const quoteCard = document.querySelector('.embed-card');
+    try {
+      const savedQuoteHeight = localStorage.getItem(QUOTE_HEIGHT_KEY);
+      if (quoteCard && savedQuoteHeight) quoteCard.style.height = savedQuoteHeight + 'px';
+    } catch (e) {}
+
+    if (window.ResizeObserver) {
+      const roCharts = new ResizeObserver(entries => {
+        entries.forEach(entry => {
+          const sym = entry.target.dataset.symbol;
+          if (!sym) return;
+          savedChartHeights[sym] = Math.round(entry.contentRect.height);
+          try { localStorage.setItem(CHART_HEIGHTS_KEY, JSON.stringify(savedChartHeights)); } catch (e) {}
+        });
+      });
+      cards.forEach(card => roCharts.observe(card));
+
+      if (quoteCard) {
+        const roQuote = new ResizeObserver(entries => {
+          entries.forEach(entry => {
+            try { localStorage.setItem(QUOTE_HEIGHT_KEY, Math.round(entry.contentRect.height)); } catch (e) {}
+          });
+        });
+        roQuote.observe(quoteCard);
+      }
+    }
+  })();
+</script>
+
+<script>
+  // Ajuda visual pro bug ocasional dos gráficos TradingView (candle não
+  // desenha e fica uma área preta — já discutido: causa é do lado do
+  // TradingView, acontece em qualquer dispositivo, não dá pra detectar
+  // de fora quando termina de carregar porque o widget é um iframe de
+  // outro domínio). Isso adiciona:
+  //  1. "Carregando gráfico…" nos primeiros 4s (cosmético, cobre a
+  //     piscada normal de carregamento).
+  //  2. Um botão "↻" discreto em cada gráfico pra recarregar só aquele
+  //     widget na hora, sem precisar dar F5 na página inteira — essa é
+  //     a correção de verdade pro caso raro de travar.
+  (function () {
+    function attachChartHelper(iframe) {
+      const container = iframe.closest('.tradingview-widget-container');
+      if (!container || container.dataset.tvFixAttached) return;
+      container.dataset.tvFixAttached = '1';
+
+      const loading = document.createElement('div');
+      loading.className = 'tv-chart-loading';
+      loading.textContent = 'Carregando gráfico…';
+      container.appendChild(loading);
+      setTimeout(() => { loading.style.display = 'none'; }, 4000);
+
+      const btn = document.createElement('button');
+      btn.className = 'tv-chart-reload';
+      btn.type = 'button';
+      btn.title = 'Atualizar gráfico';
+      btn.setAttribute('aria-label', 'Atualizar gráfico');
+      btn.textContent = '↻';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const src = iframe.src;
+        loading.style.display = 'flex';
+        iframe.src = 'about:blank';
+        setTimeout(() => {
+          iframe.src = src;
+          setTimeout(() => { loading.style.display = 'none'; }, 4000);
+        }, 50);
+      });
+      container.appendChild(btn);
+    }
+
+    // Pega os iframes que já existirem no momento em que este script roda...
+    document.querySelectorAll('iframe[src*="advanced-chart"]').forEach(attachChartHelper);
+
+    // ...e observa a chegada dos que o script assíncrono do TradingView
+    // ainda vai criar (o embed dele injeta o iframe depois de carregar).
+    const grid = document.getElementById('chartGrid') || document.body;
+    const mo = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        m.addedNodes.forEach((node) => {
+          if (node.nodeType !== 1) return;
+          if (node.tagName === 'IFRAME' && (node.src || '').indexOf('advanced-chart') !== -1) {
+            attachChartHelper(node);
+          } else if (node.querySelectorAll) {
+            node.querySelectorAll('iframe[src*="advanced-chart"]').forEach(attachChartHelper);
+          }
+        });
+      });
+    });
+    mo.observe(grid, { childList: true, subtree: true });
+  })();
+</script>
+
+</body>
+</html>
