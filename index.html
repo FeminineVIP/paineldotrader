@@ -39,6 +39,12 @@
   .sidebar-header{display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; margin-bottom:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em;}
   .sidebar-dot{width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0; box-shadow:0 0 0 3px rgba(62,207,142,0.2);}
   .hint{font-size:0.78rem; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:normal; margin-left:6px;}
+  .pop-btn{
+    margin-left:auto; background:transparent; border:1px solid var(--border); color:var(--muted);
+    border-radius:6px; width:26px; height:26px; font-size:0.9rem; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0; text-transform:none;
+  }
+  .pop-btn:hover{ color:var(--text); border-color:var(--accent); }
 
   .embed-card{
     background: var(--card); border:1px solid var(--border); border-radius:12px;
@@ -186,7 +192,10 @@
   <div class="sidebar-header">
     <span class="sidebar-dot"></span>
     <span>Grade de cotações</span>
+    <button id="popQuotesBtn" class="pop-btn" title="Abrir em janela flutuante" onclick="popOutBlock('#quotesBlock', 'popQuotesBtn', '#quotesParent', 480, 640)">⤢</button>
   </div>
+  <div id="quotesParent">
+  <div id="quotesBlock">
   <div class="embed-card">
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
@@ -225,8 +234,6 @@
               { "s": "CAPITALCOM:UK100", "d": "UK100" },
               { "s": "CAPITALCOM:DE40", "d": "DE40" },
               { "s": "FOREXCOM:JP225", "d": "JP225" },
-              { "s": "TVC:US10Y", "d": "UST10Y" },
-              { "s": "TVC:US05Y", "d": "UST05Y" },
               { "s": "BMFBOVESPA:IBOV", "d": "BRA50" },
               { "s": "FX_IDC:USDBRL", "d": "USD/BRL" }
             ]
@@ -235,6 +242,8 @@
       }
       </script>
     </div>
+  </div>
+  </div>
   </div>
 
   <div class="sidebar-header">
@@ -274,9 +283,7 @@
       { symbol: 'TVC:SILVER',       label: 'Prata (Silver)' },
       { symbol: 'TVC:UKOIL',        label: 'Petróleo Brent' },
       { symbol: 'CAPITALCOM:US100', label: 'US100 (Nasdaq)' },
-      { symbol: 'CAPITALCOM:DE40',  label: 'DE40 (Alemanha)' },
-      { symbol: 'TVC:US10Y',        label: 'Treasury 10 anos (UST10Y)' },
-      { symbol: 'TVC:US05Y',        label: 'Treasury 5 anos (UST05Y)' }
+      { symbol: 'CAPITALCOM:DE40',  label: 'DE40 (Alemanha)' }
     ];
 
     const ORDER_KEY = 'painelDoTraderOrder';
@@ -554,6 +561,57 @@
 
     rebuildGrid();
   })();
+</script>
+
+<script>
+  // Janela flutuante (pop-out) — usada pelo botão ⤢ da Grade de cotações.
+  async function popOutBlock(blockSelector, btnId, returnParentSelector, width, height) {
+    const block = document.querySelector(blockSelector);
+    const btn = document.getElementById(btnId);
+    if (!block) return;
+
+    if ("documentPictureInPicture" in window) {
+      try {
+        const pipWindow = await window.documentPictureInPicture.requestWindow({ width, height });
+
+        [...document.styleSheets].forEach(styleSheet => {
+          try {
+            const rules = [...styleSheet.cssRules].map(r => r.cssText).join("");
+            const style = document.createElement("style");
+            style.textContent = rules;
+            pipWindow.document.head.appendChild(style);
+          } catch (e) {
+            if (styleSheet.href) {
+              const link = document.createElement("link");
+              link.rel = "stylesheet";
+              link.href = styleSheet.href;
+              pipWindow.document.head.appendChild(link);
+            }
+          }
+        });
+
+        pipWindow.document.body.style.background = "var(--bg)";
+        pipWindow.document.body.style.margin = "0";
+        pipWindow.document.body.style.padding = "10px";
+        pipWindow.document.body.style.overflow = "auto";
+
+        block.style.position = "static";
+        pipWindow.document.body.appendChild(block);
+        if (btn) btn.style.display = "none";
+
+        pipWindow.addEventListener("pagehide", () => {
+          block.style.position = "";
+          document.querySelector(returnParentSelector).appendChild(block);
+          if (btn) btn.style.display = "";
+        }, { once: true });
+      } catch (e) {
+        console.warn("Picture-in-Picture indisponível.", e);
+        alert("Não foi possível abrir a janela flutuante. Esse recurso funciona no Chrome e no Edge.");
+      }
+    } else {
+      alert("Seu navegador não suporta janela flutuante (funciona no Chrome e no Edge).");
+    }
+  }
 </script>
 
 <script>
