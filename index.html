@@ -91,12 +91,26 @@
     resize: vertical;
   }
   .widget-card.dragging{ opacity:0.35; }
+
+  /* Tonalidade discreta de fundo por categoria de ativo — só pra ajudar a
+     olhar a grade e identificar o "tipo" do gráfico rapidinho. */
+  .widget-card.cat-cambio{      background:#141c26; }
+  .widget-card.cat-indices{     background:#181622; }
+  .widget-card.cat-etf{         background:#121c1a; }
+  .widget-card.cat-commodities{ background:#201a10; }
+  .widget-card.cat-cripto{      background:#1c1220; }
+
   .drag-handle{
     display:flex; align-items:center; gap:8px; padding:8px 12px;
     background: var(--bg-alt); border-bottom:1px solid var(--border);
     cursor:grab; font-size:0.78rem; font-weight:700; color:var(--muted);
     text-transform:uppercase; letter-spacing:0.03em; user-select:none; flex-shrink:0;
   }
+  .cat-cambio .drag-handle{      background:#182230; }
+  .cat-indices .drag-handle{     background:#1c1930; }
+  .cat-etf .drag-handle{         background:#16241f; }
+  .cat-commodities .drag-handle{ background:#261f14; }
+  .cat-cripto .drag-handle{      background:#221729; }
   .drag-handle:active{ cursor:grabbing; }
   .drag-handle .grip{ font-size:1rem; color:var(--muted); line-height:1; }
   .drag-handle span:nth-child(2){ flex:1; }
@@ -240,29 +254,29 @@
             "symbols": [
               { "s": "CAPITALCOM:DXY", "d": "DOLINDEX" },
               { "s": "OANDA:EURUSD", "d": "EUR/USD" },
+              { "s": "OANDA:USDCAD", "d": "USD/CAD" },
               { "s": "FX_IDC:USDMXN", "d": "USD/MXN" },
               { "s": "FX_IDC:USDZAR", "d": "USD/ZAR" },
-              { "s": "OANDA:USDCAD", "d": "USD/CAD" },
               { "s": "FX_IDC:USDJPY", "d": "USD/JPY" },
               { "s": "OANDA:GBPUSD", "d": "GBP/USD" },
+              { "s": "FX_IDC:USDBRL", "d": "USD/BRL" },
               { "s": "CAPITALCOM:US500", "d": "USA500" },
               { "s": "CAPITALCOM:US30", "d": "US30" },
               { "s": "CAPITALCOM:US100", "d": "US100" },
               { "s": "CAPITALCOM:VIX", "d": "VIX" },
-              { "s": "TVC:UKOIL", "d": "BRENT" },
-              { "s": "TVC:GOLD", "d": "GOLD" },
-              { "s": "TVC:SILVER", "d": "SILVER" },
-              { "s": "BITSTAMP:BTCUSD", "d": "BTC/USD" },
+              { "s": "CAPITALCOM:DE40", "d": "DE40" },
               { "s": "CAPITALCOM:EU50", "d": "EURO50" },
               { "s": "CAPITALCOM:UK100", "d": "UK100" },
-              { "s": "CAPITALCOM:DE40", "d": "DE40" },
               { "s": "FOREXCOM:JP225", "d": "JP225" },
               { "s": "BMFBOVESPA:IBOV", "d": "BRA50" },
-              { "s": "FX_IDC:USDBRL", "d": "USD/BRL" },
-              { "s": "BITSTAMP:ETHUSD", "d": "ETH/USD" },
-              { "s": "AMEX:IWM", "d": "IWM" },
               { "s": "AMEX:EWZ", "d": "EWZ" },
-              { "s": "AMEX:EEM", "d": "EEM" }
+              { "s": "AMEX:EEM", "d": "EEM" },
+              { "s": "AMEX:IWM", "d": "IWM" },
+              { "s": "TVC:GOLD", "d": "GOLD" },
+              { "s": "TVC:SILVER", "d": "SILVER" },
+              { "s": "TVC:UKOIL", "d": "BRENT" },
+              { "s": "BITSTAMP:BTCUSD", "d": "BTC/USD" },
+              { "s": "BITSTAMP:ETHUSD", "d": "ETH/USD" }
             ]
           }
         ]
@@ -347,30 +361,48 @@
   //      em CHART_DEFS abaixo — o resto (ordem salva, esconder, redimensionar)
   //      já funciona sozinho.
   (function () {
+    // Cada item tem uma "category" — define a ordem padrão (agrupada por
+    // tipo de ativo) que um cliente vê no primeiro acesso, e também escolhe
+    // a cor de fundo do gráfico (ver CATEGORY_COLORS). Um cliente que já
+    // reordenou/arrastou os cards manualmente mantém a ordem dele salva no
+    // navegador — isso só afeta quem ainda não mexeu em nada.
     const CHART_DEFS = [
-      { symbol: 'CAPITALCOM:DXY',   label: 'Dolindex (DXY)' },
-      { symbol: 'OANDA:EURUSD',     label: 'EUR/USD' },
-      { symbol: 'FX_IDC:USDMXN',    label: 'USD/MXN' },
-      { symbol: 'FX_IDC:USDZAR',    label: 'USD/ZAR' },
-      { symbol: 'OANDA:USDCAD',     label: 'USD/CAD' },
-      { symbol: 'CAPITALCOM:US500', label: 'USA500 (S&P)' },
-      { symbol: 'CAPITALCOM:US30',  label: 'US30 (Dow Jones)' },
-      { symbol: 'CAPITALCOM:VIX',   label: 'VIX' },
-      { symbol: 'BITSTAMP:BTCUSD',  label: 'Bitcoin (BTC/USD)' },
-      { symbol: 'TVC:GOLD',         label: 'Ouro (Gold)' },
-      { symbol: 'TVC:SILVER',       label: 'Prata (Silver)' },
-      { symbol: 'TVC:UKOIL',        label: 'Petróleo Brent' },
-      { symbol: 'CAPITALCOM:US100', label: 'US100 (Nasdaq)' },
-      { symbol: 'CAPITALCOM:DE40',  label: 'DE40 (Alemanha)' },
-      { symbol: 'FX_IDC:USDBRL',    label: 'Dólar/Real (USD/BRL)' },
-      { symbol: 'BITSTAMP:ETHUSD',  label: 'Ethereum (ETH/USD)' },
-      { symbol: 'CAPITALCOM:EU50',  label: 'EU50 (Euro Stoxx 50)' },
-      { symbol: 'CAPITALCOM:UK100', label: 'UK100 (Reino Unido)' },
-      { symbol: 'FOREXCOM:JP225',   label: 'JP225 (Japão)' },
-      { symbol: 'AMEX:IWM',         label: 'IWM (proxy Russell 2000)' },
-      { symbol: 'AMEX:EWZ',         label: 'EWZ (Brasil na bolsa dos EUA)' },
-      { symbol: 'AMEX:EEM',         label: 'EEM (proxy Emerging Markets)' }
+      // Câmbio
+      { symbol: 'CAPITALCOM:DXY',   label: 'Dolindex (DXY)',        category: 'cambio' },
+      { symbol: 'OANDA:EURUSD',     label: 'EUR/USD',               category: 'cambio' },
+      { symbol: 'OANDA:USDCAD',     label: 'USD/CAD',               category: 'cambio' },
+      { symbol: 'FX_IDC:USDMXN',    label: 'USD/MXN',               category: 'cambio' },
+      { symbol: 'FX_IDC:USDZAR',    label: 'USD/ZAR',               category: 'cambio' },
+      { symbol: 'FX_IDC:USDBRL',    label: 'Dólar/Real (USD/BRL)',  category: 'cambio' },
+      // Índices
+      { symbol: 'CAPITALCOM:US500', label: 'USA500 (S&P)',          category: 'indices' },
+      { symbol: 'CAPITALCOM:US30',  label: 'US30 (Dow Jones)',      category: 'indices' },
+      { symbol: 'CAPITALCOM:US100', label: 'US100 (Nasdaq)',        category: 'indices' },
+      { symbol: 'CAPITALCOM:VIX',   label: 'VIX',                   category: 'indices' },
+      { symbol: 'CAPITALCOM:DE40',  label: 'DE40 (Alemanha)',       category: 'indices' },
+      { symbol: 'CAPITALCOM:EU50',  label: 'EU50 (Euro Stoxx 50)',  category: 'indices' },
+      { symbol: 'CAPITALCOM:UK100', label: 'UK100 (Reino Unido)',   category: 'indices' },
+      { symbol: 'FOREXCOM:JP225',   label: 'JP225 (Japão)',         category: 'indices' },
+      // ETFs (proxy de índice/país)
+      { symbol: 'AMEX:EWZ',         label: 'EWZ (Brasil na bolsa dos EUA)',   category: 'etf' },
+      { symbol: 'AMEX:EEM',         label: 'EEM (proxy Emerging Markets)',   category: 'etf' },
+      { symbol: 'AMEX:IWM',         label: 'IWM (proxy Russell 2000)',       category: 'etf' },
+      // Commodities
+      { symbol: 'TVC:GOLD',         label: 'Ouro (Gold)',           category: 'commodities' },
+      { symbol: 'TVC:SILVER',       label: 'Prata (Silver)',        category: 'commodities' },
+      { symbol: 'TVC:UKOIL',        label: 'Petróleo Brent',        category: 'commodities' },
+      // Cripto
+      { symbol: 'BITSTAMP:BTCUSD',  label: 'Bitcoin (BTC/USD)',     category: 'cripto' },
+      { symbol: 'BITSTAMP:ETHUSD',  label: 'Ethereum (ETH/USD)',    category: 'cripto' }
     ];
+
+    const CATEGORY_COLORS = {
+      cambio:      { bg: 'rgba(20,28,38,1)', grid: 'rgba(34,48,65,0.4)' },
+      indices:     { bg: 'rgba(24,22,34,1)', grid: 'rgba(45,40,60,0.4)' },
+      etf:         { bg: 'rgba(18,28,26,1)', grid: 'rgba(30,55,48,0.4)' },
+      commodities: { bg: 'rgba(32,26,16,1)', grid: 'rgba(58,46,26,0.4)' },
+      cripto:      { bg: 'rgba(28,18,32,1)', grid: 'rgba(52,32,58,0.4)' }
+    };
 
     const ORDER_KEY = 'painelDoTraderOrder';
     const HIDDEN_KEY = 'painelDoTraderHidden';
@@ -468,9 +500,10 @@
 
     function buildCard(def) {
       const card = document.createElement('div');
-      card.className = 'widget-card';
+      card.className = 'widget-card cat-' + (def.category || 'cambio');
       card.dataset.symbol = def.symbol;
       if (savedHeights[def.symbol]) card.style.height = savedHeights[def.symbol] + 'px';
+      const colors = CATEGORY_COLORS[def.category] || CATEGORY_COLORS.cambio;
 
       const handle = document.createElement('div');
       handle.className = 'drag-handle';
@@ -514,7 +547,7 @@
         timezone: 'America/Sao_Paulo', autosize: true, hide_top_toolbar: true,
         hide_legend: true, hide_volume: true, allow_symbol_change: false,
         save_image: false, enable_publishing: false,
-        backgroundColor: 'rgba(20,28,38,1)', gridColor: 'rgba(34,48,65,0.4)'
+        backgroundColor: colors.bg, gridColor: colors.grid
       });
       mainContainer.appendChild(mainScript);
 
