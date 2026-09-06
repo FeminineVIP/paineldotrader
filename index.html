@@ -97,8 +97,8 @@
   .widget-card.cat-cambio{      background:#141c26; }
   .widget-card.cat-indices{     background:#181622; }
   .widget-card.cat-etf{         background:#121c1a; }
-  .widget-card.cat-commodities{ background:#201a10; }
-  .widget-card.cat-cripto{      background:#1c1220; }
+  .widget-card.cat-commodities{ background:#2a1c0c; }
+  .widget-card.cat-cripto{      background:#22102c; }
 
   .drag-handle{
     display:flex; align-items:center; gap:8px; padding:8px 12px;
@@ -109,8 +109,8 @@
   .cat-cambio .drag-handle{      background:#182230; }
   .cat-indices .drag-handle{     background:#1c1930; }
   .cat-etf .drag-handle{         background:#16241f; }
-  .cat-commodities .drag-handle{ background:#261f14; }
-  .cat-cripto .drag-handle{      background:#221729; }
+  .cat-commodities .drag-handle{ background:#5c3a10; }
+  .cat-cripto .drag-handle{      background:#4a1560; }
   .drag-handle:active{ cursor:grabbing; }
   .drag-handle .grip{ font-size:1rem; color:var(--muted); line-height:1; }
   .drag-handle span:nth-child(2){ flex:1; }
@@ -363,9 +363,9 @@
   (function () {
     // Cada item tem uma "category" — define a ordem padrão (agrupada por
     // tipo de ativo) que um cliente vê no primeiro acesso, e também escolhe
-    // a cor de fundo do gráfico (ver CATEGORY_COLORS). Um cliente que já
-    // reordenou/arrastou os cards manualmente mantém a ordem dele salva no
-    // navegador — isso só afeta quem ainda não mexeu em nada.
+    // a cor do cabeçalho do card (ver classes .cat-* no CSS). Um cliente que
+    // já reordenou/arrastou os cards manualmente mantém a ordem dele salva
+    // no navegador — isso só afeta quem ainda não mexeu em nada.
     const CHART_DEFS = [
       // Câmbio
       { symbol: 'CAPITALCOM:DXY',   label: 'Dolindex (DXY)',        category: 'cambio' },
@@ -396,13 +396,13 @@
       { symbol: 'BITSTAMP:ETHUSD',  label: 'Ethereum (ETH/USD)',    category: 'cripto' }
     ];
 
-    const CATEGORY_COLORS = {
-      cambio:      { bg: 'rgba(20,28,38,1)', grid: 'rgba(34,48,65,0.4)' },
-      indices:     { bg: 'rgba(24,22,34,1)', grid: 'rgba(45,40,60,0.4)' },
-      etf:         { bg: 'rgba(18,28,26,1)', grid: 'rgba(30,55,48,0.4)' },
-      commodities: { bg: 'rgba(32,26,16,1)', grid: 'rgba(58,46,26,0.4)' },
-      cripto:      { bg: 'rgba(28,18,32,1)', grid: 'rgba(52,32,58,0.4)' }
-    };
+    // Fundo do PRÓPRIO gráfico (candles) é neutro e igual pra todas as
+    // categorias — testei tingir isso por categoria e ficou pesado demais
+    // atrás do candle, pouco profissional pra um gráfico de verdade. A
+    // diferenciação por categoria fica só na faixa do cabeçalho de cada card
+    // (ver .cat-* .drag-handle no CSS), que é onde ela realmente ajuda a
+    // identificar o tipo de ativo sem distrair do gráfico em si.
+    const CHART_BG = { bg: 'rgba(20,28,38,1)', grid: 'rgba(34,48,65,0.4)' };
 
     const ORDER_KEY = 'painelDoTraderOrder';
     const HIDDEN_KEY = 'painelDoTraderHidden';
@@ -505,7 +505,7 @@
       card.className = 'widget-card cat-' + (def.category || 'cambio');
       card.dataset.symbol = def.symbol;
       if (savedHeights[def.symbol]) card.style.height = savedHeights[def.symbol] + 'px';
-      const colors = CATEGORY_COLORS[def.category] || CATEGORY_COLORS.cambio;
+      const colors = CHART_BG;
 
       const handle = document.createElement('div');
       handle.className = 'drag-handle';
