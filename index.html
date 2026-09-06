@@ -220,7 +220,7 @@
       <li><b>Reordenar um gráfico:</b> clique e arraste pela faixa cinza no topo do gráfico (⠿⠿). A nova ordem fica salva automaticamente neste navegador.</li>
       <li><b>Redimensionar:</b> arraste o cantinho inferior direito de qualquer gráfico (ou da grade de cotações lá em cima) para deixá-lo maior ou menor.</li>
       <li><b>Esconder um gráfico que você não usa:</b> clique no × no canto superior direito da faixa do gráfico.</li>
-      <li><b>Trazer os gráficos escondidos de volta:</b> clique em "Restaurar gráficos" — o botão aparece ao lado do aviso, logo acima da grade, sempre que houver algum escondido.</li>
+      <li><b>Restaurar o painel:</b> clique em "Restaurar painel", ao lado do aviso logo acima da grade — ele traz de volta qualquer gráfico que você tenha escondido e também devolve a ordem original (agrupada por tipo de ativo: câmbio, índices, commodities etc).</li>
       <li><b>Gráfico travado ou com a tela preta:</b> clique no ↻ no canto do gráfico para recarregar só ele, sem precisar atualizar a página inteira (isso é uma instabilidade ocasional do TradingView, não é um problema do painel).</li>
     </ul>
   </div>
@@ -291,7 +291,7 @@
     <span class="sidebar-dot"></span>
     <span>Gráficos — candle 5min</span>
     <span class="hint">arraste pela faixa do topo de cada card pra reordenar — a ordem fica salva no seu navegador</span>
-    <button type="button" id="restoreHiddenBtn" class="restore-btn" hidden>Restaurar gráficos (<span id="hiddenCount">0</span>)</button>
+    <button type="button" id="restoreHiddenBtn" class="restore-btn" title="Traz de volta os gráficos escondidos e restaura a ordem padrão do painel">Restaurar painel (<span id="hiddenCount">0</span> escondidos)</button>
   </div>
 
   <div class="widget-grid" id="chartGrid"></div>
@@ -448,8 +448,10 @@
     }
 
     function updateRestoreBtn() {
+      // O botão fica sempre visível — ele não serve só pra trazer gráficos
+      // escondidos de volta, mas pra restaurar o painel inteiro ao padrão
+      // (também redefine a ordem), então é útil mesmo com 0 escondidos.
       const hidden = getHidden();
-      if (restoreBtn) restoreBtn.hidden = hidden.length === 0;
       if (hiddenCountEl) hiddenCountEl.textContent = hidden.length;
     }
 
@@ -602,6 +604,7 @@
     if (restoreBtn) {
       restoreBtn.addEventListener('click', () => {
         saveHidden([]);
+        localStorage.removeItem(ORDER_KEY);
         rebuildGrid();
       });
     }
