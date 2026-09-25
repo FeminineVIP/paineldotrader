@@ -5,9 +5,16 @@
 // Bloqueia o acesso ao painel (index.html) para quem não tem uma sessão
 // válida com assinatura ativa, redirecionando para a página de assinatura.
 //
-// Páginas sempre liberadas (não passam por essa checagem):
-//   /assinar.html, /assinar-especial.html, /login.html (se existir),
-//   arquivos estáticos comuns (imagens, css, js) e a própria pasta /functions.
+// Páginas sempre liberadas (não passam pela checagem de sessão):
+//   /assinar.html, /login.html (se existir), arquivos estáticos comuns
+//   (imagens, css, js) e a própria pasta /functions.
+//
+// A página /assinar-especial.html tem uma regra própria: só é liberada
+// para quem chegar com o código de acesso certo na URL (?codigo=...),
+// verificado aqui no servidor contra a variável de ambiente
+// CODIGO_ESPECIAL (nunca fica exposto no código público do GitHub).
+// Quem não tiver o código é mandado para a página normal, como se a
+// especial não existisse.
 // ============================================================================
 
 const API_URL = "https://api.paineldotrader.com.br";
@@ -16,12 +23,16 @@ const API_URL = "https://api.paineldotrader.com.br";
 const CAMINHOS_LIVRES = [
   "/assinar",
   "/assinar.html",
-  "/assinar-especial",
-  "/assinar-especial.html",
   "/login",
   "/login.html",
   "/favicon.ico",
   "/robots.txt"
+];
+
+// Caminhos que exigem o código de acesso especial (ver CODIGO_ESPECIAL).
+const CAMINHOS_ESPECIAIS = [
+  "/assinar-especial",
+  "/assinar-especial.html"
 ];
 
 function ehCaminhoLivre(pathname) {
@@ -37,8 +48,53 @@ function ehCaminhoLivre(pathname) {
 }
 
 export async function onRequest(context) {
-  const { request, next } = context;
+  const { request, next, env } = context;
   const url = new URL(request.url);
+
+  // --------------------------------------------------------------------------
+  // Página especial: exige código de acesso
+  // --------------------------------------------------------------------------
+
+  if (CAMINHOS_ESPECIAIS.includes(url.pathname)) {
+    const codigoRecebido = url.searchParams.get("codigo");
+
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const jaValidado = /acesso_especial=1(;|$)/.test(cookieHeader);
+
+    const codigoCorreto =
+      !!env.CODIGO_ESPECIAL &&
+      codigoRecebido === env.CODIGO_ESPECIAL;
+
+    if (!codigoCorreto && !jaValidado) {
+      // Código errado, ausente, ou variável ainda não configurada:
+      // manda para a página normal, sem revelar que existe algo diferente.
+      return Response.redirect(
+        new URL("/assinar", url.origin).toString(),
+        302
+      );
+    }
+
+    const resposta = await next();
+
+    if (codigoCorreto && !jaValidado) {
+      // Primeira vez com o código certo: grava um cookie para a pessoa
+      // não precisar digitar o código de novo em visitas futuras.
+      const novaResposta = new Response(resposta.body, resposta);
+
+      novaResposta.headers.append(
+        "Set-Cookie",
+        `acesso_especial=1; Domain=.paineldotrader.com.br; Secure; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 180}; Path=/`
+      );
+
+      return novaResposta;
+    }
+
+    return resposta;
+  }
+
+  // --------------------------------------------------------------------------
+  // Demais páginas: checagem normal de sessão/assinatura
+  // --------------------------------------------------------------------------
 
   if (ehCaminhoLivre(url.pathname)) {
     return next();
