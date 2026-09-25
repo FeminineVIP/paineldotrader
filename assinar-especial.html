@@ -47,25 +47,44 @@
     margin-bottom: 40px;
   }
 
-  .layout {
+  .hero-row {
     display: grid;
-    grid-template-columns: 0.85fr 1.15fr;
-    gap: 48px;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 40px;
     align-items: center;
+    margin-bottom: 40px;
   }
 
   @media (max-width: 780px) {
-    .layout {
+    .hero-row {
       grid-template-columns: 1fr;
-      gap: 28px;
+      gap: 20px;
     }
   }
 
   .hero-image {
     width: 100%;
+    max-height: 300px;
+    object-fit: cover;
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     display: block;
+  }
+
+  @media (max-width: 780px) {
+    .hero-image {
+      max-height: 200px;
+    }
+  }
+
+  .intro h1,
+  .intro .sub {
+    margin: 0 0 12px;
+    max-width: none;
+  }
+
+  .intro .sub {
+    margin-bottom: 0;
   }
 
   .mark {
@@ -284,20 +303,22 @@
       <span>PAINEL DO TRADER</span>
     </header>
 
-    <div class="layout">
+    <div class="hero-row">
 
       <div class="hero">
         <img class="hero-image" src="/assets/parceria-topgain-dom.jpg" alt="Parceria Top Gain e Dom Investimentos (XP)">
       </div>
 
-      <div class="content">
-
+      <div class="intro">
         <div class="badge">PARCERIA TOP GAIN × DOM INVESTIMENTOS</div>
 
         <h1>Sua condição exclusiva por indicação da Top Gain e Dom Investimentos</h1>
         <p class="sub">Você chegou até aqui pela nossa parceria com a Top Gain e a Dom Investimentos (XP). Como agradecimento, preparamos planos com preço especial só pra essa comunidade.</p>
+      </div>
 
-        <div class="plans" id="plans">
+    </div>
+
+    <div class="plans" id="plans">
           <button class="plan" data-plano="especial_mensal">
             <div class="plan-name">Mensal</div>
             <div class="plan-price">R$ 13,90</div>
@@ -331,13 +352,9 @@
           <div class="status" id="status"></div>
         </div>
 
-        <footer>
-          Pagamento processado com segurança pelo Mercado Pago. Cartão e saldo Mercado Pago renovam automaticamente; Pix libera o acesso por um período fixo, sem renovar sozinho.
-        </footer>
-
-      </div>
-
-    </div>
+    <footer>
+      Pagamento processado com segurança pelo Mercado Pago. Cartão e saldo Mercado Pago renovam automaticamente; Pix libera o acesso por um período fixo, sem renovar sozinho.
+    </footer>
 
   </div>
 
