@@ -177,7 +177,7 @@
   .how-to-btn{
     background:transparent; border:1px solid var(--border); color:var(--muted);
     border-radius:8px; padding:8px 14px; font-size:0.82rem; font-family:inherit;
-    cursor:pointer; white-space:nowrap;
+    cursor:pointer; white-space:nowrap; text-decoration:none; display:inline-block;
   }
   .how-to-btn:hover{ color:var(--text); border-color:var(--accent); }
   .how-to-overlay{
@@ -251,7 +251,10 @@
       <h1>Painel do Trader</h1>
       <p class="subtitle">Cotações internacionais em tempo real, direto no navegador.</p>
     </div>
-    <button type="button" id="howToBtn" class="how-to-btn">❓ Como usar</button>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a href="/blocos.html" class="how-to-btn">📊 Blocos de Gráficos</a>
+      <button type="button" id="howToBtn" class="how-to-btn">❓ Como usar</button>
+    </div>
   </div>
 </header>
 
