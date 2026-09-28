@@ -162,6 +162,7 @@
     display:flex; align-items:center; justify-content:center;
   }
   .chart-pop-btn:hover{ color:var(--text); background:rgba(77,163,255,0.14); }
+  .chart-pop-btn:disabled{ opacity:0.35; cursor:default; }
   .widget-card.chart-popped-out{
     display:flex; align-items:center; justify-content:center;
     color:var(--muted); font-size:0.78rem; text-align:center; padding:12px;
@@ -494,10 +495,20 @@
       const saved = readJSON(ORDER_KEY, null);
       const all = CHART_DEFS.map(c => c.symbol);
       if (!saved || !Array.isArray(saved)) return all;
+      // Remove duplicatas que possam ter ficado gravadas no navegador (ex:
+      // duplo clique acidental no pop-out de um gráfico antes da correção
+      // desse bug) — sem isso, um símbolo duplicado na ordem salva faz a
+      // grade desenhar o mesmo gráfico duas vezes a cada recarregamento.
+      const seen = new Set();
+      const semDuplicata = saved.filter(s => {
+        if (seen.has(s)) return false;
+        seen.add(s);
+        return true;
+      });
       // Símbolos novos (adicionados depois em CHART_DEFS, que ainda não
       // existiam quando a ordem foi salva) entram no fim automaticamente.
-      const extras = all.filter(s => !saved.includes(s));
-      return saved.filter(s => all.includes(s)).concat(extras);
+      const extras = all.filter(s => !semDuplicata.includes(s));
+      return semDuplicata.filter(s => all.includes(s)).concat(extras);
     }
     function saveOrder() {
       // A grade (DOM) é a fonte de verdade pro que está visível agora;
@@ -573,8 +584,21 @@
     // ordem (inclusive se o usuário arrastar outros cards enquanto esse
     // estiver na janela flutuante) e evita que "Restaurar painel" crie um
     // gráfico duplicado enquanto o original está popped-out.
-    async function popOutCard(card) {
+    async function popOutCard(card, btn) {
+      // Trava o botão IMEDIATAMENTE (antes de qualquer código assíncrono).
+      // Sem isso, um clique duplo (ou clicar de novo enquanto o
+      // requestWindow() ainda está em andamento) dispara uma segunda
+      // chamada pro MESMO gráfico antes da primeira terminar — cada uma
+      // cria seu próprio placeholder com o mesmo data-symbol, e a ordem
+      // salva no navegador acaba gravando o símbolo duas vezes (o
+      // gráfico passa a aparecer duplicado a cada recarregamento).
+      if (card.dataset.popping === '1') return;
+      card.dataset.popping = '1';
+      if (btn) btn.disabled = true;
+
       if (!("documentPictureInPicture" in window)) {
+        delete card.dataset.popping;
+        if (btn) btn.disabled = false;
         alert("Seu navegador não suporta janela flutuante (funciona no Chrome e no Edge).");
         return;
       }
@@ -610,6 +634,12 @@
         placeholder.textContent = 'Aberto em janela flutuante…';
         grid.insertBefore(placeholder, card);
 
+        // Esconde o botão enquanto o gráfico está na janela flutuante — ele
+        // viaja junto com o card (que agora vive dentro do pipWindow), e um
+        // clique nele ali dentro tentaria reabrir um card que já não está
+        // mais na grade principal.
+        if (btn) btn.style.display = "none";
+
         card.style.position = "static";
         pipWindow.document.body.appendChild(card);
 
@@ -620,9 +650,19 @@
           } else {
             grid.appendChild(card);
           }
+          delete card.dataset.popping;
+          if (btn) {
+            btn.disabled = false;
+            btn.style.display = "";
+          }
         }, { once: true });
       } catch (e) {
         console.warn("Picture-in-Picture indisponível.", e);
+        delete card.dataset.popping;
+        if (btn) {
+          btn.disabled = false;
+          btn.style.display = "";
+        }
         alert("Não foi possível abrir a janela flutuante. Esse recurso funciona no Chrome e no Edge.");
       }
     }
@@ -649,7 +689,7 @@
       popBtn.textContent = '⤢';
       popBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        popOutCard(card);
+        popOutCard(card, popBtn);
       });
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
