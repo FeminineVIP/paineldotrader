@@ -121,6 +121,17 @@
     display:flex; align-items:center; justify-content:center;
   }
   .chart-close-btn:hover{ color:#ff8a8a; background:rgba(255,138,138,0.12); }
+  .chart-pop-btn{
+    flex-shrink:0; width:20px; height:20px; padding:0; margin:0;
+    border:none; background:transparent; color:var(--muted);
+    font-size:13px; line-height:1; cursor:pointer; border-radius:5px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .chart-pop-btn:hover{ color:var(--text); background:rgba(77,163,255,0.14); }
+  .widget-card.chart-popped-out{
+    display:flex; align-items:center; justify-content:center;
+    color:var(--muted); font-size:0.78rem; text-align:center; padding:12px;
+  }
   .widget-card.chart-hidden{ display:none; }
   .restore-btn{
     margin-left:6px; background:transparent; border:1px solid var(--accent);
@@ -219,6 +230,7 @@
     <ul class="how-to-list">
       <li><b>Reordenar um gráfico:</b> clique e arraste pela faixa cinza no topo do gráfico (⠿⠿). A nova ordem fica salva automaticamente neste navegador.</li>
       <li><b>Redimensionar:</b> arraste o cantinho inferior direito de qualquer gráfico (ou da grade de cotações lá em cima) para deixá-lo maior ou menor.</li>
+      <li><b>Abrir um gráfico em janela separada:</b> clique no ⤢ na faixa do gráfico para destacá-lo numa janela flutuante, que continua por cima de outras abas/janelas (Chrome e Edge).</li>
       <li><b>Esconder um gráfico que você não usa:</b> clique no × no canto superior direito da faixa do gráfico.</li>
       <li><b>Restaurar o painel:</b> clique em "Restaurar painel", ao lado do aviso logo acima da grade — ele traz de volta qualquer gráfico que você tenha escondido e também devolve a ordem original (agrupada por tipo de ativo: câmbio, índices, commodities etc).</li>
       <li><b>Gráfico travado ou com a tela preta:</b> clique no ↻ no canto do gráfico para recarregar só ele, sem precisar atualizar a página inteira (isso é uma instabilidade ocasional do TradingView, não é um problema do painel).</li>
@@ -500,6 +512,70 @@
     }
     let dragEl = null;
 
+    // Pop-out de UM gráfico específico (botão ⤢ de cada card), reaproveitando
+    // a mesma técnica de Document Picture-in-Picture usada nos blocos de
+    // cima. Diferente daqueles blocos (fixos, um só de cada), aqui o card
+    // pode estar em qualquer posição da grade (arrastável) — por isso, em
+    // vez de simplesmente "devolver pro pai" ao fechar, deixamos um
+    // placeholder ocupando o lugar exato do card na grade e trocamos os
+    // dois de volta quando a janela flutuante for fechada. Isso preserva a
+    // ordem (inclusive se o usuário arrastar outros cards enquanto esse
+    // estiver na janela flutuante) e evita que "Restaurar painel" crie um
+    // gráfico duplicado enquanto o original está popped-out.
+    async function popOutCard(card) {
+      if (!("documentPictureInPicture" in window)) {
+        alert("Seu navegador não suporta janela flutuante (funciona no Chrome e no Edge).");
+        return;
+      }
+
+      try {
+        const pipWindow = await window.documentPictureInPicture.requestWindow({ width: 440, height: 400 });
+
+        [...document.styleSheets].forEach(styleSheet => {
+          try {
+            const rules = [...styleSheet.cssRules].map(r => r.cssText).join("");
+            const style = document.createElement("style");
+            style.textContent = rules;
+            pipWindow.document.head.appendChild(style);
+          } catch (e) {
+            if (styleSheet.href) {
+              const link = document.createElement("link");
+              link.rel = "stylesheet";
+              link.href = styleSheet.href;
+              pipWindow.document.head.appendChild(link);
+            }
+          }
+        });
+
+        pipWindow.document.body.style.background = "var(--bg)";
+        pipWindow.document.body.style.margin = "0";
+        pipWindow.document.body.style.padding = "8px";
+        pipWindow.document.body.style.overflow = "auto";
+
+        const placeholder = document.createElement('div');
+        placeholder.className = card.className + ' chart-popped-out';
+        placeholder.dataset.symbol = card.dataset.symbol;
+        placeholder.style.height = card.offsetHeight + 'px';
+        placeholder.textContent = 'Aberto em janela flutuante…';
+        grid.insertBefore(placeholder, card);
+
+        card.style.position = "static";
+        pipWindow.document.body.appendChild(card);
+
+        pipWindow.addEventListener("pagehide", () => {
+          card.style.position = "";
+          if (placeholder.parentNode) {
+            placeholder.parentNode.replaceChild(card, placeholder);
+          } else {
+            grid.appendChild(card);
+          }
+        }, { once: true });
+      } catch (e) {
+        console.warn("Picture-in-Picture indisponível.", e);
+        alert("Não foi possível abrir a janela flutuante. Esse recurso funciona no Chrome e no Edge.");
+      }
+    }
+
     function buildCard(def) {
       const card = document.createElement('div');
       card.className = 'widget-card cat-' + (def.category || 'cambio');
@@ -514,6 +590,16 @@
       grip.textContent = '⠿⠿';
       const label = document.createElement('span');
       label.textContent = def.label;
+      const popBtn = document.createElement('button');
+      popBtn.type = 'button';
+      popBtn.className = 'chart-pop-btn';
+      popBtn.title = 'Abrir em janela flutuante';
+      popBtn.setAttribute('aria-label', 'Abrir em janela flutuante');
+      popBtn.textContent = '⤢';
+      popBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        popOutCard(card);
+      });
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'chart-close-btn';
@@ -522,6 +608,7 @@
       closeBtn.textContent = '×';
       handle.appendChild(grip);
       handle.appendChild(label);
+      handle.appendChild(popBtn);
       handle.appendChild(closeBtn);
 
       const miniWrap = document.createElement('div');
