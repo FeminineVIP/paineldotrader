@@ -19,6 +19,12 @@
     /* Altura padrão de cada janela de gráfico. Também pode ser arrastada
        manualmente pelo canto inferior direito de cada card. */
     --chart-height: 400px;
+    /* Largura da coluna fixa de cotações à esquerda (estilo LA13). */
+    --quotes-col-width: 380px;
+    /* Quanto o painel de cotações é "ampliado" visualmente (fonte maior),
+       sem alterar a largura real da coluna. Ajuste este valor para deixar
+       a fonte ainda maior ou menor. */
+    --quote-zoom: 1.3;
   }
   *{box-sizing:border-box;}
   body{
@@ -46,6 +52,34 @@
     display:flex; align-items:center; justify-content:center; padding:0; text-transform:none;
   }
   .pop-btn:hover{ color:var(--text); border-color:var(--accent); }
+
+  /* --- Layout em duas colunas: cotações fixas na esquerda (estilo LA13),
+     gráficos e rankings na coluna da direita. --- */
+  .painel-layout{
+    display:grid;
+    grid-template-columns: var(--quotes-col-width) 1fr;
+    gap:18px;
+    align-items:start;
+  }
+  @media (max-width:1100px){
+    .painel-layout{ grid-template-columns: 1fr; }
+  }
+  .quotes-sidebar-card{
+    position:sticky;
+    top:18px;
+  }
+  @media (max-width:1100px){
+    .quotes-sidebar-card{ position:static; }
+  }
+  /* Amplia visualmente o texto do widget de cotações sem mudar a largura
+     ocupada pela coluna (o widget é desenhado um pouco mais largo por
+     dentro e depois escalado de volta). */
+  .quote-zoom-outer{ width:100%; overflow:hidden; }
+  .quote-zoom-inner{
+    width: calc(100% / var(--quote-zoom));
+    transform: scale(var(--quote-zoom));
+    transform-origin: top left;
+  }
 
   /* --- Ranking de Moedas vs Real (lista customizada, estilo Profit) --- */
   .ranking-card{
@@ -240,6 +274,9 @@
 
 <main class="wrap">
 
+<div class="painel-layout">
+
+  <div class="painel-col-quotes">
   <div class="sidebar-header">
     <span class="sidebar-dot"></span>
     <span>Grade de cotações</span>
@@ -247,7 +284,9 @@
   </div>
   <div id="quotesParent">
   <div id="quotesBlock">
-  <div class="embed-card">
+  <div class="embed-card quotes-sidebar-card">
+    <div class="quote-zoom-outer">
+    <div class="quote-zoom-inner">
     <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
       <div class="tradingview-widget-copyright"></div>
@@ -295,9 +334,14 @@
       }
       </script>
     </div>
+    </div>
+    </div>
   </div>
   </div>
   </div>
+  </div>
+
+  <div class="painel-col-charts">
 
   <div class="sidebar-header">
     <span class="sidebar-dot"></span>
@@ -358,6 +402,10 @@
   </div>
   </div>
   </div>
+
+  </div>
+
+</div>
 
 </main>
 
