@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel do Trader — Teste de Blocos</title>
+<style>
+  :root{
+    --bg: #0b0f14;
+    --bg-alt: #101720;
+    --card: #141c26;
+    --border: #223041;
+    --text: #e8edf2;
+    --muted: #8fa1b3;
+    --accent: #4da3ff;
+    --green: #3ecf8e;
+    --chart-height: 260px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height:1.6;
+  }
+  .wrap{max-width: 1400px; margin:0 auto; padding: 0 24px;}
+  header{padding: 24px 0 18px; border-bottom: 1px solid var(--border);}
+  h1{font-size: 1.4rem; margin:0 0 6px;}
+  .subtitle{color:var(--muted); font-size:0.9rem; margin:0;}
+  main{padding:24px 0 60px;}
+
+  /* Página de teste: os 3 blocos lado a lado (cada um empilhado na
+     vertical por dentro). Em telas menores, empilha os blocos também. */
+  .blocos-layout{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:18px;
+    align-items:start;
+  }
+  @media (max-width:1000px){ .blocos-layout{ grid-template-columns: 1fr; } }
+
+  .sidebar-header{display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; margin-bottom:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em;}
+  .sidebar-dot{width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0; box-shadow:0 0 0 3px rgba(62,207,142,0.2);}
+  .pop-btn{
+    margin-left:auto; background:transparent; border:1px solid var(--border); color:var(--muted);
+    border-radius:6px; width:26px; height:26px; font-size:0.9rem; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0; text-transform:none;
+  }
+  .pop-btn:hover{ color:var(--text); border-color:var(--accent); }
+
+  .bloco{
+    display:flex; flex-direction:column; gap:10px;
+    background: var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:10px;
+  }
+  .widget-card{
+    background: var(--bg-alt); border:1px solid var(--border); border-radius:10px;
+    padding:0; height:var(--chart-height); min-height:160px; display:flex; flex-direction:column; overflow:hidden;
+    resize: vertical;
+  }
+  .widget-card .card-label{
+    padding:6px 10px; font-size:0.72rem; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.03em; border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .widget-card .mini-quote{ height:88px; flex-shrink:0; border-bottom:1px solid var(--border); overflow:hidden; }
+  .widget-card .tradingview-widget-container{flex:1; min-height:0;}
+  .tradingview-widget-container{width:100%;}
+  .tradingview-widget-copyright{font-size:0.68rem; color:var(--muted); text-align:right;}
+
+  footer{padding:24px 0 40px; text-align:center; color:var(--muted); font-size:0.8rem; border-top:1px solid var(--border); margin-top:12px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Painel do Trader — Teste de Blocos</h1>
+    <p class="subtitle">Página de teste: 3 gráficos empilhados por bloco, cada bloco pode ser aberto inteiro numa janela flutuante.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="blocos-layout">
+
+    <!-- BLOCO 1: DXY, USD/MXN, USD/BRL -->
+    <div>
+      <div class="sidebar-header">
+        <span class="sidebar-dot"></span>
+        <span>Bloco 1</span>
+        <button id="popBloco1Btn" class="pop-btn" title="Abrir bloco em janela flutuante" onclick="popOutBlock('#bloco1', 'popBloco1Btn', '#bloco1Parent', 440, 880)">⤢</button>
+      </div>
+      <div id="bloco1Parent">
+      <div id="bloco1" class="bloco">
+
+        <div class="widget-card" data-symbol="CAPITALCOM:DXY">
+          <div class="card-label">DXY — US Dollar Index</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "CAPITALCOM:DXY", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "CAPITALCOM:DXY", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+        <div class="widget-card" data-symbol="FX_IDC:USDMXN">
+          <div class="card-label">USD/MXN</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "FX_IDC:USDMXN", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "FX_IDC:USDMXN", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+        <div class="widget-card" data-symbol="FX_IDC:USDBRL">
+          <div class="card-label">USD/BRL</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "FX_IDC:USDBRL", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "FX_IDC:USDBRL", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+      </div>
+      </div>
+    </div>
+
+    <!-- BLOCO 2: SPX500, US30, NAS100 -->
+    <div>
+      <div class="sidebar-header">
+        <span class="sidebar-dot"></span>
+        <span>Bloco 2</span>
+        <button id="popBloco2Btn" class="pop-btn" title="Abrir bloco em janela flutuante" onclick="popOutBlock('#bloco2', 'popBloco2Btn', '#bloco2Parent', 440, 880)">⤢</button>
+      </div>
+      <div id="bloco2Parent">
+      <div id="bloco2" class="bloco">
+
+        <div class="widget-card" data-symbol="CAPITALCOM:US500">
+          <div class="card-label">SPX500 — S&amp;P 500</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "CAPITALCOM:US500", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "CAPITALCOM:US500", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+        <div class="widget-card" data-symbol="CAPITALCOM:US30">
+          <div class="card-label">US30 — Dow Jones</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "CAPITALCOM:US30", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "CAPITALCOM:US30", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+        <div class="widget-card" data-symbol="CAPITALCOM:US100">
+          <div class="card-label">NAS100 — Nasdaq</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "CAPITALCOM:US100", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "CAPITALCOM:US100", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+      </div>
+      </div>
+    </div>
+
+    <!-- BLOCO 3: VIX, UKOIL, GOLD -->
+    <div>
+      <div class="sidebar-header">
+        <span class="sidebar-dot"></span>
+        <span>Bloco 3</span>
+        <button id="popBloco3Btn" class="pop-btn" title="Abrir bloco em janela flutuante" onclick="popOutBlock('#bloco3', 'popBloco3Btn', '#bloco3Parent', 440, 880)">⤢</button>
+      </div>
+      <div id="bloco3Parent">
+      <div id="bloco3" class="bloco">
+
+        <div class="widget-card" data-symbol="CAPITALCOM:VIX">
+          <div class="card-label">VIX</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "CAPITALCOM:VIX", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "CAPITALCOM:VIX", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+        <div class="widget-card" data-symbol="TVC:UKOIL">
+          <div class="card-label">UKOIL — Petróleo Brent</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "TVC:UKOIL", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "TVC:UKOIL", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+        <div class="widget-card" data-symbol="TVC:GOLD">
+          <div class="card-label">GOLD — Ouro</div>
+          <div class="mini-quote">
+            <div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+              { "symbol": "TVC:GOLD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "br" }
+              </script>
+            </div>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tradingview-widget-copyright"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            { "symbol": "TVC:GOLD", "interval": "5", "style": "1", "theme": "dark", "locale": "br", "timezone": "America/Sao_Paulo", "autosize": true, "hide_top_toolbar": true, "hide_legend": true, "hide_volume": true, "allow_symbol_change": false, "save_image": false, "enable_publishing": false, "backgroundColor": "rgba(20,28,38,1)", "gridColor": "rgba(34,48,65,0.4)" }
+            </script>
+          </div>
+        </div>
+
+      </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>Painel do Trader — página de teste (blocos de 3 gráficos, pop-out por bloco).</footer>
+
+<script>
+  // Mesma função de pop-out (Document Picture-in-Picture) já usada no
+  // painel principal — aqui aplicada a um bloco inteiro (3 gráficos
+  // empilhados) de uma vez, em vez de 1 gráfico só.
+  async function popOutBlock(blockSelector, btnId, returnParentSelector, width, height) {
+    const block = document.querySelector(blockSelector);
+    const btn = document.getElementById(btnId);
+    if (!block) return;
+
+    if ("documentPictureInPicture" in window) {
+      try {
+        const pipWindow = await window.documentPictureInPicture.requestWindow({ width, height });
+
+        [...document.styleSheets].forEach(styleSheet => {
+          try {
+            const rules = [...styleSheet.cssRules].map(r => r.cssText).join("");
+            const style = document.createElement("style");
+            style.textContent = rules;
+            pipWindow.document.head.appendChild(style);
+          } catch (e) {
+            if (styleSheet.href) {
+              const link = document.createElement("link");
+              link.rel = "stylesheet";
+              link.href = styleSheet.href;
+              pipWindow.document.head.appendChild(link);
+            }
+          }
+        });
+
+        pipWindow.document.body.style.background = "var(--bg)";
+        pipWindow.document.body.style.margin = "0";
+        pipWindow.document.body.style.padding = "10px";
+        pipWindow.document.body.style.overflow = "auto";
+
+        block.style.position = "static";
+        pipWindow.document.body.appendChild(block);
+        if (btn) btn.style.display = "none";
+
+        pipWindow.addEventListener("pagehide", () => {
+          block.style.position = "";
+          document.querySelector(returnParentSelector).appendChild(block);
+          if (btn) btn.style.display = "";
+        }, { once: true });
+      } catch (e) {
+        console.warn("Picture-in-Picture indisponível.", e);
+        alert("Não foi possível abrir a janela flutuante. Esse recurso funciona no Chrome e no Edge.");
+      }
+    } else {
+      alert("Seu navegador não suporta janela flutuante (funciona no Chrome e no Edge).");
+    }
+  }
+</script>
+
+</body>
+</html>
